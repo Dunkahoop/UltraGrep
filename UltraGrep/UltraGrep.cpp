@@ -2,43 +2,126 @@
 //
 
 #include <iostream>
+#include <vector>
+#include <sstream>
+#include <filesystem>
 
 using namespace std;
+namespace fs = std::filesystem;
 
 int main(int argc, char* argv[])
 {
-    if (argc < 3) {
-        cerr << "Error: too few args" << endl;
+    bool verbose = false;
+    int argIndex = 1;
+
+    // Check if the first argument is "-v"
+    if (argc > 1 && string(argv[1]) == "-v") {
+        verbose = true;
+        argIndex = 2; // Skip the "-v" argument
+    }
+
+    if (argc < argIndex + 2 || argc > 5) {//if argc is below 3 or 4 (with verbose, the minimum amount needed), or greater than 5 (the maximum needed)
+        cerr << "Usage: ultragrep [-v] folder expr [extension-list]*" << endl;
+        cerr << "Note: Extensions must be chained by \'.\' char. Example: .cpp.hpp.h" << endl;
         return 1;
     }
-    try {
-        if (argv[1] == "-v") {
-            cout << "verbose mode active" << endl;
-            cout << "folder: " << argv[2] << endl;
-            cout << "expr: " << argv[3] << endl;
 
+    string folder = argv[argIndex],
+        expr = argv[argIndex + 1];
+    vector<string> extensions;
+
+    // Output the values of argv
+    cout << "Verbose mode: " << (verbose ? "ON" : "OFF") << endl;
+    cout << "Folder: " << folder << endl;
+    cout << "Expression: " << expr << endl;
+
+    if (argv[argIndex + 2]) {
+        string str = argv[argIndex + 2], item;
+        stringstream in(str);
+
+        while (getline(in, item, '.'))
+        extensions.push_back(item);
+
+        if(extensions.at(0) == "")//artifact of line parsing
+        extensions.erase(extensions.begin());//removes unnecessary entry
+        else// . char is required
+        {
+            cerr << "Extensions must be chained by \'.\' char. Example: .cpp.hpp.h" << endl;
+            return 1;
         }
-        else {
-            cout << "verbose mode inactive" << endl;
-            cout << "folder: " << argv[1] << endl;
-            cout << "expr: " << argv[2] << endl;
+
+        cout << "Extensions: " << endl;
+        for (const auto& ext : extensions) {
+            cout << "\t" << ext << endl;
         }
     }
-    catch (invalid_argument e) {
-        cerr << "Error: too few args -> " << e.what() << endl;
+
+    // Iterate through the directory and its subdirectories
+    try {
+        for (const auto& entry : fs::recursive_directory_iterator(folder)) {
+            if (entry.is_regular_file()) {
+                std::cout << "Found file: " << entry.path() << std::endl;
+                // Here you can open and process the file as needed
+            }
+        }
+    }
+    catch (const fs::filesystem_error& e) {
+        std::cerr << "Filesystem error: " << e.what() << std::endl;
         return 1;
     }
     
+    cout << "program ended successfully" << endl;
+
+    //if (argc < 3 || argc > 5) {
+    //    cerr << "Error: inproper args" << endl;
+    //    cerr << "Format:" << endl;
+    //    cerr << "ultragrep [-v] folder expr [extention-list]" << endl;
+    //    return 1;
+    //}
+    //try {
+    //    
+
+    //    if (string(argv[1]) == "-v"s) {//s makes it a string, needs to be a string got work
+    //        cout << "verbose mode active" << endl;
+    //        cout << "folder: " << argv[2] << endl;
+    //        cout << "expression: " << argv[3] << endl;
+
+    //        if (argv[4]) {
+    //            string str = argv[4], item;
+    //            vector<string> exts;
+    //            stringstream in(str);
+
+    //            while (getline(in, item, '.'))
+    //                exts.push_back(item);
+
+    //            cout << "extension(s): " << endl;
+    //            for (string e : exts)
+    //                cout << e << endl;
+    //        }
+    //    }
+    //    else {
+    //        cout << "folder: " << argv[1] << endl;
+    //        cout << "expression: " << argv[2] << endl;
+
+    //        if (argv[3]) {
+    //            string str = argv[3], item;
+    //            vector<string> exts;
+    //            stringstream in(str);
+
+    //            while (getline(in, item, '.'))
+    //                exts.push_back(item);
+
+    //            cout << "extension(s): ";
+    //            for (string e : exts)
+    //                cout << e << endl;
+    //        }
+    //    }
+
+    //}
+    //catch (invalid_argument e) {
+    //    cerr << "Error: too few args -> " << e.what() << endl;
+    //    return 1;
+    //}
+    
     return 0;
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
