@@ -4,15 +4,58 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
+#include <regex>
+#include <fstream>
 #include <filesystem>
 
 using namespace std;
-namespace fs = std::filesystem;
+int matches{ 0 };
+bool verbose{ false };
+
+void outputFile(string e, filesystem::directory_entry entry) {
+    int count{ 0 };
+    string output;
+    regex expr(e);
+
+    if (verbose) cout << "Grepping: " << entry.path() << endl;
+    ifstream file(entry.path());
+    while (getline(file, output))
+    {
+        count++;
+
+        /*if (output.find(expr) != string::npos) {
+            istringstream stream(output); string temp;
+            while (stream >> temp) {
+                if (temp == expr) {
+                    matches++;
+                }
+            }
+
+            
+        }*/
+
+        auto words_begin = sregex_iterator(output.begin(), output.end(), expr);
+        auto words_end = sregex_iterator();
+
+        int matchCount = distance(words_begin, words_end);
+
+        if (matchCount > 0) {
+            if (verbose)
+                cout << "Matched " << count << ": " << entry.path() << " [" << count << ":" << matchCount << "] " << output << endl;
+            else
+                cout << entry.path() << "\n[" << count << "] " << output << endl;
+        }
+
+        matches += matchCount;
+
+    }
+    cout << endl;
+}
 
 int main(int argc, char* argv[])
 {
-    bool verbose = false;
-    int argIndex = 1;
+    
+    int argIndex{ 1 };// , matches{ 0 };
 
     // Check if the first argument is "-v"
     if (argc > 1 && string(argv[1]) == "-v") {
@@ -26,8 +69,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    string folder = argv[argIndex],
-        expr = argv[argIndex + 1];
+    string folder = argv[argIndex], expr = argv[argIndex + 1];
     vector<string> extensions;
 
     // Output the values of argv
@@ -56,72 +98,79 @@ int main(int argc, char* argv[])
         }
     }
 
+    cout << endl;
+
     // Iterate through the directory and its subdirectories
     try {
-        for (const auto& entry : fs::recursive_directory_iterator(folder)) {
+        for (const auto& entry : filesystem::recursive_directory_iterator(folder)) {
+            int count{ 0 };
             if (entry.is_regular_file()) {
-                std::cout << "Found file: " << entry.path() << std::endl;
-                // Here you can open and process the file as needed
+                if (extensions.empty()) {
+                    outputFile(expr, entry);
+                    /*if (verbose) cout << "Grepping: " << entry.path() << endl;
+                    ifstream file(entry.path());
+                    while (getline(file, output))
+                    {
+                        count++;
+                        
+                        if (output.find(expr) != string::npos) {
+                            istringstream stream(output); string temp;
+                            while (stream >> temp) {
+                                if (temp == expr) {
+                                    matches++;
+                                }
+                            }
+
+                            if (verbose)
+                                cout << "Matched " << count  << ": " << entry.path() << " [" << count << "] " << output << endl;
+                            else
+                                cout << entry.path() << "\n[" << count << "] " << output << endl;
+                        }
+
+                    }
+                    cout << endl;*/
+                }
+                else {
+                    for (string ext : extensions) {
+                        if (entry.path().extension() == ext) {
+                            //TODO: make this a separete function, repetitive code
+                            outputFile(expr, entry);
+                            /*if (verbose) cout << "Grepping: " << entry.path() << endl;
+                            ifstream file(entry.path());
+                            while (getline(file, output))
+                            {
+                                count++;
+
+                                if (output.find(expr) != string::npos) {
+                                    istringstream stream(output); string temp;
+                                    while (stream >> temp) {
+                                        if (temp == expr) {
+                                            matches++;
+                                        }
+                                    }
+
+                                    if (verbose)
+                                        cout << "Matched " << count << ": " << entry.path() << " [" << count << "] " << output << endl;
+                                    else
+                                        cout << entry.path() << "\n[" << count << "] " << output << endl;
+                                }
+
+                            }
+                            cout << endl;*/
+                        }
+                    }
+                }
             }
+            else
+                if (verbose) cout << "Scanning: " << entry.path() << endl;
         }
     }
-    catch (const fs::filesystem_error& e) {
-        std::cerr << "Filesystem error: " << e.what() << std::endl;
+    catch (const filesystem::filesystem_error& e) {
+        cerr << "Filesystem error: " << e.what() << endl;
         return 1;
     }
     
-    cout << "program ended successfully" << endl;
-
-    //if (argc < 3 || argc > 5) {
-    //    cerr << "Error: inproper args" << endl;
-    //    cerr << "Format:" << endl;
-    //    cerr << "ultragrep [-v] folder expr [extention-list]" << endl;
-    //    return 1;
-    //}
-    //try {
-    //    
-
-    //    if (string(argv[1]) == "-v"s) {//s makes it a string, needs to be a string got work
-    //        cout << "verbose mode active" << endl;
-    //        cout << "folder: " << argv[2] << endl;
-    //        cout << "expression: " << argv[3] << endl;
-
-    //        if (argv[4]) {
-    //            string str = argv[4], item;
-    //            vector<string> exts;
-    //            stringstream in(str);
-
-    //            while (getline(in, item, '.'))
-    //                exts.push_back(item);
-
-    //            cout << "extension(s): " << endl;
-    //            for (string e : exts)
-    //                cout << e << endl;
-    //        }
-    //    }
-    //    else {
-    //        cout << "folder: " << argv[1] << endl;
-    //        cout << "expression: " << argv[2] << endl;
-
-    //        if (argv[3]) {
-    //            string str = argv[3], item;
-    //            vector<string> exts;
-    //            stringstream in(str);
-
-    //            while (getline(in, item, '.'))
-    //                exts.push_back(item);
-
-    //            cout << "extension(s): ";
-    //            for (string e : exts)
-    //                cout << e << endl;
-    //        }
-    //    }
-
-    //}
-    //catch (invalid_argument e) {
-    //    cerr << "Error: too few args -> " << e.what() << endl;
-    //    return 1;
-    //}
+    cout << "Total Matches: " << matches << endl;
     
     return 0;
 }
