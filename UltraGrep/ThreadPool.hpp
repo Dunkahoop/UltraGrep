@@ -6,36 +6,31 @@
 #include <thread>
 #include <queue>
 #include <mutex>
+#include <regex>
 #include <condition_variable>
 #include <functional>
+#include <latch>
 using namespace std;
 
-class ThreadPoolFacade
-{
-	ThreadPoolFacade(size_t numThreads);
-	~ThreadPoolFacade();
+class ThreadPool {
+public:
+    ThreadPool(bool verbose);
+    ~ThreadPool();
 
-	void start();
-	void stop();
-	void enqueueTask(function<void()> task);
+    void start();
+    void stop();
+    void enqueueTask(const filesystem::directory_entry& task);
+
 private:
-	class ThreadPool { 
-	public: 
-		ThreadPool(size_t numThreads); 
-		~ThreadPool();
+    //void workerThread();
 
-		void enqueueTask(function<void()> task);
-		void start();
-		void stop();
-	private:
-		void workerThread();
-
-		vector<thread> workers;
-		queue<function<void()>> tasks;
-		mutex queueMutex;
-		condition_variable condition;
-		bool stopFlag; 
-	}; 
-	ThreadPool pool;
+    vector<thread> workers;
+    queue<filesystem::directory_entry> tasks;
+    mutex queueMutex, consoleMutex;
+    condition_variable wakeCond;
+    bool stopFlag;
+    bool verbose;
+    int numThreads = thread::hardware_concurrency();
+    latch setupDone{ numThreads + 1 };
 };
 
