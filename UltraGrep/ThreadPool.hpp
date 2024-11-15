@@ -14,23 +14,29 @@ using namespace std;
 
 class ThreadPool {
 public:
-    ThreadPool(bool verbose);
+    ThreadPool(bool verbose, const std::string& expr);
     ~ThreadPool();
 
     void start();
     void stop();
     void enqueueTask(const filesystem::directory_entry& task);
 
+    vector<string> report;
+    int matches;
+
 private:
-    //void workerThread();
+    void workerThread();
 
     vector<thread> workers;
     queue<filesystem::directory_entry> tasks;
-    mutex queueMutex, consoleMutex;
+    mutex queueMutex;
+    mutex consoleMutex;
     condition_variable wakeCond;
     bool stopFlag;
     bool verbose;
-    int numThreads = thread::hardware_concurrency();
+    int numThreads;
     latch setupDone{ numThreads + 1 };
+    
+    regex expr;
 };
 
