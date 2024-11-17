@@ -1,13 +1,14 @@
+/**
+     * File Name:       UltraGrep.cpp
+     * Description:     Main file for project
+     * Author:			Duncan Wade
+     * Date:            November 16th, 2024
+*/
+
 #include <iostream>
 #include <vector>
 #include <sstream>
-#include <regex>
-#include <fstream>
-#include <filesystem>
-#include <thread>
-#include <queue>
-#include <condition_variable>
-#include <latch>
+#include <chrono>
 #include "ThreadPool.hpp"
 
 using namespace std;
@@ -17,6 +18,7 @@ vector<string> extensions;
 
 int main(int argc, char* argv[]) {
     int argIndex{ 1 };
+    auto startTime{ chrono::high_resolution_clock::now() };//used to get runtime
 
     // Check if the first argument is "-v"
     if (argc > 1 && string(argv[1]) == "-v") {
@@ -30,11 +32,11 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    string folder = argv[argIndex];
+    string folder{ argv[argIndex] };
 
-    if (argv[argIndex + 2]) {
-        string str = argv[argIndex + 2], item;
-        stringstream in(str);
+    if (argv[argIndex + 2]) {//has extensions in CLI
+        string item;
+        stringstream in(argv[argIndex + 2]);
 
         while (getline(in, item, '.'))
             extensions.push_back("." + item);//dot added to match value of entry.path().extension()
@@ -46,31 +48,24 @@ int main(int argc, char* argv[]) {
             cerr << "Extensions must be chained by \'.\' char. Example: .cpp.hpp.h" << endl;
             return 1;
         }
-
-        cout << "Extensions: " << endl;
-        for (const auto& ext : extensions) {
-            cout << "\t" << ext << endl;
-        }
     }
-    else {//by default it searches TXT files
+    else //by default it searches TXT files
         extensions.push_back(".txt");
-    }
 
+    //set up thread pool
     ThreadPool pool(verbose, argv[argIndex + 1]);
     pool.start();
 
     // Iterate through the directory and its subdirectories
     try {
         for (const auto& entry : filesystem::recursive_directory_iterator(folder)) {
-            //put file into queue if path is a regular file (lock wuth mutex to avoid corruptions)
+            //put file into queue if path is a regular file (lock with mutex to avoid corruptions)
             if (entry.is_regular_file()) {
-                for (const string& ext : extensions)
+                for (const string& ext : extensions)//ensure file has extension specified in extensions vector
                     if (entry.path().extension() == ext)
-                    {
                         pool.enqueueTask(entry);
-                    }
             }
-            else {
+            else {//put into brackets to avoid confusion: would be read as an else if otherwise
                 if (verbose) cout << "Scanning: " << entry.path() << endl;
             }
         }
@@ -82,12 +77,11 @@ int main(int argc, char* argv[]) {
 
     pool.stop();
 
-    cout << "Grep Report:" << endl << endl;
+    //get final runtime
+    auto endTime{ chrono::high_resolution_clock::now() };
+    chrono::duration<double, std::milli> time { endTime - startTime };
 
-    for (const string& e : pool.report)
-        cout << e << endl << endl;
-
-    cout << "Total Matches: " << pool.matches << endl;
+    pool.generateReport(time);
 
     return 0;
 }
